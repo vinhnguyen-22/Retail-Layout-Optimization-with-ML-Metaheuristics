@@ -1,0 +1,32 @@
+# Rác hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Checkpoint notebook
+.ipynb_checkpoints/
+
+# File log lớn, không cần version hóa
+*.log
+*.tmp
+*.bak
+
+# File metadata tự sinh
+*.swp
+*.swo
+*.~*
+
+# File zip, tgz, tar (nếu chỉ là lưu tạm)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# Ảnh hoặc cache không cần dùng để huấn luyện
+*.jpg
+*.png
+__pycache__/
+
+# Dữ liệu tạm hoặc kết quả trung gian (nếu có)
+intermediate/
+cache/
+tmp/

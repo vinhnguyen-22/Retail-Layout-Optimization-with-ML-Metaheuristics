@@ -1,0 +1,153 @@
+# =============================
+# DAGSTER
+# =============================
+# Ignore Dagster local artifacts
+.dagster/
+# Ignore Dagster internal state folders (from your image)
+/dagster_pipeline/.nux/
+/dagster_pipeline/.telemetry/
+/dagster_pipeline/history/
+/dagster_pipeline/schedules/
+/dagster_pipeline/storage/
+/dagster_pipeline/logs/
+
+
+
+# =============================
+# DVC
+# =============================
+data/**
+!data/**/*.dvc
+!data/.gitkeep
+
+models/**
+!models/**/*.dvc
+!models/.gitkeep
+
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
+
+# DVC lock file (optional, include if using pipelines)
+# dvc.lock
+
+# DVC local remote
+dvc-storage/
+
+# =============================
+# Airflow
+# =============================
+logs/
+
+
+# =============================
+# MLflow
+# =============================
+/mlruns/
+/notebooks/mlruns/
+# =============================
+# Python
+# =============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# =============================
+# Jupyter & Notebooks
+# =============================
+.ipynb_checkpoints/
+*.checkpoint
+*.nbconvert.ipynb
+
+# =============================
+# Logs
+# =============================
+*.log
+
+# =============================
+# Virtual Environments
+# =============================
+.env
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# =============================
+# Dependency & Packaging
+# =============================
+*.egg-info/
+.eggs/
+*.egg
+*.whl
+dist/
+build/
+develop-eggs/
+downloads/
+sdist/
+pip-log.txt
+pip-delete-this-directory.txt
+Pipfile.lock
+poetry.lock
+pdm.lock
+.pdm.toml
+.pdm-python
+.pdm-build/
+__pypackages__/
+
+# =============================
+# Unit test / coverage
+# =============================
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# =============================
+# IDEs and Editors
+# =============================
+.vscode/
+.idea/
+.spyderproject
+.spyproject
+.ropeproject
+
+# =============================
+# Static analysis
+# =============================
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# =============================
+# MkDocs / Docs
+# =============================
+docs/site/
+site/
+
+# =============================
+# OS & Editor Junk
+# =============================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# =============================
+# Custom keeps
+# =============================
+!data/.gitkeep
+!models/.gitkeep

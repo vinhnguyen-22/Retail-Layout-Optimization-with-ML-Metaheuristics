@@ -1,0 +1,109 @@
+site_name: Forecasting System
+site_description: Complete documentation for the Retail Forecasting ML platform
+site_author: Forecasting Team
+
+repo_url: https://github.com/vinhnguyen-22/retail-forecast-system
+repo_name: retail-forecast-system
+edit_uri: edit/main/docs/
+
+# Social & SEO
+site_url: https://github.com/vinhnguyen-22/retail-forecast-system
+# favicon: images/favicon.ico
+# logo: images/logo.png
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.expand
+    - navigation.top
+    - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - toc.integrate
+    - toc.follow
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - header.autohide
+    - announce.dismiss
+  palette:
+    - scheme: slate
+      primary: black
+      accent: orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: blue grey
+      accent: orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  font:
+    text: Helvetica
+    code: Helvetica
+  icon:
+    repo: fontawesome/brands/github
+
+  # Optional: custom_dir: overrides/
+  # Optional: custom_css, custom_javascript
+
+nav:
+  - 🏠 Home: index.md
+  - 🚀 Quickstart & Installation: install.md
+  - 🛠️ Feature Engineering: feature_engineering.md
+  - 🤖 Model Reference: models.md
+  - 🔗 Library & Tooling: tools.md
+  - 🏗️ Architecture & Workflow: architecture.md
+  - 📈 Forecasting Strategies: strategies.md
+  # - 📝 Changelog & Roadmap: appendix.md
+  # - 📚 All Docs: overview.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - tables
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - footnotes
+  - attr_list
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.highlight
+  - pymdownx.snippets
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+
+plugins:
+  - search
+  - tags
+  - autorefs
+  - awesome-pages
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+  - macros
+  - mike:
+      alias_type: symlink
+  # - mkdocs-jupyter: # For direct notebook render, if you want
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/vinhnguyen-22/retail-forecast-system
+#   analytics:
+#     provider: google
+#     tracking_id: UA-XXXXXXXXX-X
+# announce:
+#   type: info
+#   text: "🚀 New major version released! [Read more](changelog.md)"
+# Optionally add i18n, custom CSS/JS, more plugins if needed!

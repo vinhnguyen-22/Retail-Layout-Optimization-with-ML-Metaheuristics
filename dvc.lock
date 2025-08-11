@@ -1,0 +1,40 @@
+schema: '2.0'
+stages:
+  transform:
+    cmd: python main.py preprocess transform --input-file transactions.csv 
+      --output-file transaction_fpg.csv --item-id SDeptName
+    deps:
+    - path: data/raw/transactions.csv
+      hash: md5
+      md5: b0b59816e6e2859a8c98f0ea8f7dfd91
+      size: 279168838
+    - path: src/preprocess.py
+      hash: md5
+      md5: e8b28d13a45e201636898ada46dfcaff
+      size: 1451
+    outs:
+    - path: data/interim/transaction_fpg.csv
+      hash: md5
+      md5: e124eea0ac53e664a668e93ef690bfce
+      size: 74522415
+  fpgrowth:
+    cmd: python main.py fpgrowth run --input-file transaction_fpg.csv
+    deps:
+    - path: src/fpg_analyzer.py
+      hash: md5
+      md5: 795d1c4fbb264016b7a60a151871aea1
+      size: 1097
+  huim:
+    cmd: python main.py huim run --input-file transaction_fpg.csv
+    deps:
+    - path: src/huim_analyzer.py
+      hash: md5
+      md5: 0296675dec1abcfa43f4b6c9aa734d24
+      size: 2426
+  load-data:
+    cmd: python main.py load-data run --date 230101 --store-id 399
+    deps:
+    - path: src/load_data.py
+      hash: md5
+      md5: 98a09e0cb29660783eb4c7103db36ca4
+      size: 1049
