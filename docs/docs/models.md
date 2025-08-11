@@ -1,82 +1,21 @@
-# 4. Model Characteristics
+# Models
 
-The platform integrates a diverse set of algorithms, enabling robust, scalable, and explainable sales forecasting. Models and strategies are **automatically selected and tuned** based on data characteristics, business requirements, and prediction horizon. Below are the main modeling approaches used in the system:
+## FP-Growth
+FP-Growth is an algorithm used to **identify groups of products that are frequently purchased together, based on their occurrence frequency in transaction data**. It employs an FP-tree structure to efficiently organize the data and reduce processing time. FP-Growth is suitable for discovering common associations between products but does not consider transaction value, which means it may overlook infrequent combinations with high utility.
 
----
+## EFIM
+EFIM is an algorithm under the HUIM category, designed to **identify product combinations with high utility in transactions, such as those generating revenue above a defined threshold**. Unlike frequency-based methods, EFIM focuses on the actual value of items by leveraging optimization techniques such as utility-lists and the Transaction-Weighted Utility (TWU) measure. This algorithm is particularly suitable for retail applications that require evaluating the economic effectiveness of product combinations in large-scale datasets.
 
-## **A. Unsupervised Clustering: KMeans for Time Series Segmentation**
+## Genetic Algorithm
+Appling Genetic Algorithm (GA) in Store Layout Optimization: Genetic Algorithm (GA) is an optimization technique inspired by the principles of natural selection, well-suited for solving complex combinatorial problems with large search spaces and multiple constraints. When applied to store layout optimization, GA helps identify the most effective arrangement of product groups to maximize business value. The process typically involves the following steps:
 
-**KMeans** clustering groups time series with similar patterns, allowing the system to assign the most suitable forecasting model for each group (e.g., XGBoost, Prophet). This tailored approach increases overall accuracy, handles heterogeneity across stores/SKUs, and enables custom strategies at multiple hierarchy levels.
+-	**Initialization:** Generate a set of random layout configurations.
+-	**Evaluation:** Assess the performance of each layout using a fitness function based on criteria such as total revenue and product group synergy.
+-	**Generation:** Produce new layout options by combining and mutating the most effective configurations.
+-	**Iteration:** Repeat the process across multiple generations to gradually improve solution quality.
 
-### **Key Features Used for Clustering:**
+## Greedy and Local Search
 
-| **Feature**                               | **Description**                                           |
-| ----------------------------------------- | --------------------------------------------------------- |
-| Length                                    | Series duration (# periods with data)                     |
-| Sparsity                                  | Proportion of zero sales                                  |
-| Coefficient of Variation (CV)             | Standard deviation / mean, measuring relative variability |
-| Trend Strength                            | Degree and direction of trend over time                   |
-| Seasonality                               | Strength of repeating patterns                            |
-| Skewness                                  | Asymmetry in distribution                                 |
-| Kurtosis                                  | Peakedness, tail heaviness/outlier tendency               |
-| Entropy                                   | Randomness or predictability                              |
-| Number of Peaks                           | Local maxima count (volatility indicator)                 |
-| AFC (Auto-regressive Feature Correlation) | Short-term dependence on previous values                  |
-| ACF Mean                                  | Mean autocorrelation at short lags                        |
-| Dominant Frequency                        | Main repeating cycle detected                             |
-| Rolling Slope                             | Average trend over rolling windows                        |
+- **Greedy Search** is a strategy that selects the best option at each current step, with the hope that locally optimal choices will lead to a globally optimal solution. However, this method does not guarantee finding the best overall solution.
 
-After clustering, the pipeline automatically assigns and tunes the best model for each group, adapting to changes in data hierarchy or quality.
-
----
-
-## **B. Core Forecasting Models**
-
-| **Model**    | **Type**                 | **Strengths**                                                                                                     | **Use Case in Retail Forecasting**                                    |
-| ------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **XGBoost**  | Gradient Boosted Trees   | Handles complex, non-linear tabular data; robust to noise; interpretable; fast training; excellent for short-term | Adapts to store/SKU-specific factors, promotions, sudden changes      |
-| **Prophet**  | Decomposable Time Series | Captures trend, seasonality, holiday effects; interpretable components; best for regular, cyclic sales patterns   | Forecasts seasonal demand, marketing/holiday impacts, business cycles |
-| **LightGBM** | Fast Boosted Trees       | Optimized for large-scale, high-dimensional, or noisy data; less sensitive to missing patterns                    | Effective for unstable, highly variable multi-store/product data      |
-
-- **Model assignment is automated**: Based on cluster profiles, data diagnostics, and business priorities.
-
----
-
-## **C. Generative AI: LLM RAG (Retrieval-Augmented Generation)**
-
-**LLM RAG** (Retrieval-Augmented Generation) brings GenAI directly into the forecasting pipeline for complex, highly non-stationary, or outlier-prone time series.
-
-![Lag Feature image](./images/TimeRAG.jpg)
-
-### **How RAG is Used:**
-
-1. **Build a Knowledge Base**:
-
-   - Historical time series are segmented, featurized, and clustered (e.g. KMeans).
-   - Representative patterns are stored as a reference database.
-
-2. **Retrieve and Prompt**:
-
-   - For a new input, the system finds the top-K most similar sequences (using DTW, clustering, or embeddings).
-   - The input and reference sequences are formatted as a natural language prompt with clear instructions for the LLM.
-
-3. **LLM-Driven Forecasting & Diagnosis**:
-
-   - The LLM uses both input data and retrieved patterns to generate forecasts, detect anomalies, or explain uncertainty.
-   - This augments statistical and ML models with external, context-rich knowledge—**without requiring model fine-tuning**.
-
----
-
-### **Benefits of LLM RAG Integration**
-
-- **Enhances accuracy and stability** for volatile or rare-event time series.
-- **Automates feature suggestion and selection** (knowledge-augmented FE).
-- **Provides instant diagnostic and explainability reports** for business users and data scientists.
-- **Reduces hallucination and adapts across new domains** (no extra retraining).
-- **Supports anomaly detection and knowledge-based scenario generation**.
-
----
-
-**The synergy between classic ML, statistical forecasting, and GenAI makes the system highly flexible, resilient, and future-proof for modern retail operations.**
-
----
+- **Local Search** starts with a feasible solution and gradually improves it by exploring neighboring solutions to find better ones. This approach is suitable for problems with a very large solution space, where exploring all possible options is impractical.

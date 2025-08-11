@@ -1,8 +1,8 @@
-site_name: Forecasting System
+site_name: Association Rules Analytical System
 site_description: Complete documentation for the Retail Forecasting ML platform
-site_author: Forecasting Team
+site_author: Analysis Team
 
-repo_url: https://github.com/vinhnguyen-22/retail-forecast-system
+# repo_url: https://github.com/vinhnguyen-22/retail-forecast-system
 repo_name: retail-forecast-system
 edit_uri: edit/main/docs/
 
@@ -55,11 +55,12 @@ theme:
 nav:
   - 🏠 Home: index.md
   - 🚀 Quickstart & Installation: install.md
-  - 🛠️ Feature Engineering: feature_engineering.md
+  # - 🛠️ Feature Engineering: feature_engineering.md
   - 🤖 Model Reference: models.md
   - 🔗 Library & Tooling: tools.md
-  - 🏗️ Architecture & Workflow: architecture.md
-  - 📈 Forecasting Strategies: strategies.md
+  - 🏗️ Workflow: architecture.md
+  - 📈 Analytical Strategies: strategies.md
+  - 📈 Output: output.md
   # - 📝 Changelog & Roadmap: appendix.md
   # - 📚 All Docs: overview.md
 
@@ -90,8 +91,8 @@ plugins:
   - tags
   - autorefs
   - awesome-pages
-  - git-revision-date-localized:
-      fallback_to_build_date: true
+  # - git-revision-date-localized:
+  #     fallback_to_build_date: true
   - macros
   - mike:
       alias_type: symlink
@@ -99,7 +100,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/vinhnguyen-22/retail-forecast-system
+      # link: https://github.com/vinhnguyen-22/retail-forecast-system
 #   analytics:
 #     provider: google
 #     tracking_id: UA-XXXXXXXXX-X
