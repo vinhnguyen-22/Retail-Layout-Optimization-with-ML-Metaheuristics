@@ -1,16 +1,119 @@
-import math
+from pathlib import Path
+from typing import Optional, Tuple
 
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
-import plotly.graph_objs as go
 import seaborn as sns
 from scipy.spatial.distance import pdist, squareform
 
+from src.utils.plot_utils import (
+    DEFAULT_CMAP_NAME,
+    DEFAULT_DPI,
+    DEFAULT_PADDING_RATIO,
+    _axes_off,
+    _build_shared_mapping,
+    _draw_grid,
+    _draw_labels,
+    _estimate_cell_size,
+    _figure_size,
+    _make_cmap_norm,
+    _rasterize_grid,
+    _validate_df,
+)
+
 
 class LayoutVisualizer:
+
+    @staticmethod
+    def plot_visualize_layout(
+        self,
+        df_layout: pd.DataFrame,
+        out_png: Path,
+        cell_size: Optional[float] = None,
+        title: str = "Layout (GA) — preview",
+        label_fontsize: int = 4,
+        show_labels: bool = True,
+    ) -> None:
+        _validate_df(df_layout)
+        cs = (
+            float(cell_size)
+            if cell_size is not None
+            else _estimate_cell_size(df_layout)
+        )
+        grid, id2name = _rasterize_grid(
+            df_layout, cs, padding_ratio=DEFAULT_PADDING_RATIO
+        )
+        _draw_grid(
+            grid,
+            id2name,
+            title=title,
+            out_png=out_png,
+            label_fontsize=(label_fontsize if show_labels else 0),
+            dpi=DEFAULT_DPI,
+            cmap_name=DEFAULT_CMAP_NAME,
+        )
+
+    def plot_compare_layouts(
+        self,
+        df_before: pd.DataFrame,
+        df_after: pd.DataFrame,
+        out_png: Path,
+        titles: Tuple[str, str] = ("Trước", "Sau"),
+        cell_size_before: Optional[float] = None,
+        cell_size_after: Optional[float] = None,
+        label_mode: str = "both",  # "left" | "right" | "both" | "none"
+        label_fontsize: int = 4,
+    ) -> None:
+        _validate_df(df_before)
+        _validate_df(df_after)
+
+        shared_map = _build_shared_mapping(df_before, df_after)
+        cs_a = (
+            float(cell_size_before)
+            if cell_size_before is not None
+            else _estimate_cell_size(df_before)
+        )
+        cs_b = (
+            float(cell_size_after)
+            if cell_size_after is not None
+            else _estimate_cell_size(df_after)
+        )
+
+        grid_a, id2name = _rasterize_grid(
+            df_before, cs_a, name2id=shared_map, padding_ratio=DEFAULT_PADDING_RATIO
+        )
+        grid_b, _ = _rasterize_grid(
+            df_after, cs_b, name2id=shared_map, padding_ratio=DEFAULT_PADDING_RATIO
+        )
+
+        H1, W1 = int(grid_a.shape[0]), int(grid_a.shape[1])
+        H2, W2 = int(grid_b.shape[0]), int(grid_b.shape[1])
+        max_id = max(
+            int(grid_a.max()) if grid_a.size else 0,
+            int(grid_b.max()) if grid_b.size else 0,
+        )
+        cmap, norm = _make_cmap_norm(max_id, DEFAULT_CMAP_NAME)
+
+        fig_w, fig_h = _figure_size(W1 + W2, max(H1, H2), cols=2)
+        fig, axs = plt.subplots(1, 2, figsize=(fig_w, fig_h))
+
+        axs[0].imshow(grid_a, cmap=cmap, norm=norm, interpolation="none")
+        axs[0].set_title(titles[0], fontsize=6)
+        _axes_off(axs[0])
+
+        axs[1].imshow(grid_b, cmap=cmap, norm=norm, interpolation="none")
+        axs[1].set_title(titles[1], fontsize=6)
+        _axes_off(axs[1])
+
+        if label_mode in ("left", "both"):
+            _draw_labels(axs[0], grid_a, id2name, fontsize=label_fontsize)
+        if label_mode in ("right", "both"):
+            _draw_labels(axs[1], grid_b, id2name, fontsize=label_fontsize)
+
+        plt.savefig(out_png, dpi=DEFAULT_DPI, bbox_inches="tight")
+        plt.close(fig)
 
     @staticmethod
     def plot_spring_layout(
@@ -51,95 +154,6 @@ class LayoutVisualizer:
         plt.title("Spring layout - Network of Category Affinity")
         plt.axis("off")
         plt.tight_layout()
-        plt.show()
-
-    @staticmethod
-    def visualize_layout_grid(df, cluster_labels=None):
-        # 1. Đọc dữ liệu
-        if df is None or df.empty:
-            print("Dữ liệu rỗng.")
-            return
-
-        # 2. Ước lượng tham số layout
-        coords = df[["x", "y"]].values
-        dist_matrix = squareform(pdist(coords))
-        np.fill_diagonal(dist_matrix, np.inf)
-        min_dist = max(dist_matrix.min(), 50)
-        dept_size = round(min_dist * 0.8)
-        cell_size = max(1, round(dept_size / 2))
-        padding = dept_size
-
-        # 3. Tạo lưới từ dữ liệu xy
-        categories = df["Category"].unique()
-        dept_id_map = {name: i + 1 for i, name in enumerate(categories)}
-        df["Dept_ID"] = df["Category"].map(dept_id_map)
-        df.rename(columns={"x": "center_x_px", "y": "center_y_px"}, inplace=True)
-        df["x_start"] = df["center_x_px"] - dept_size / 2
-        df["x_end"] = df["center_x_px"] + dept_size / 2
-        df["y_start"] = df["center_y_px"] - dept_size / 2
-        df["y_end"] = df["center_y_px"] + dept_size / 2
-        min_x, max_x = df["x_start"].min() - padding, df["x_end"].max() + padding
-        min_y, max_y = df["y_start"].min() - padding, df["y_end"].max() + padding
-        grid_w = math.ceil((max_x - min_x) / cell_size)
-        grid_h = math.ceil((max_y - min_y) / cell_size)
-        grid = np.zeros((grid_h, grid_w), dtype=int)
-        for _, row in df.iterrows():
-            x0 = math.floor((row["x_start"] - min_x) / cell_size)
-            x1 = math.ceil((row["x_end"] - min_x) / cell_size)
-            y0 = math.floor((row["y_start"] - min_y) / cell_size)
-            y1 = math.ceil((row["y_end"] - min_y) / cell_size)
-            grid[y0:y1, x0:x1] = row["Dept_ID"]
-
-        # 4. Xuất file mapping Category - Dept_ID
-        pd.DataFrame(list(dept_id_map.items()), columns=["Category", "Dept_ID"]).to_csv(
-            "layout_department_id.csv", index=False
-        )
-
-        # 5. Trực quan hóa layout trên lưới
-        fig, ax = plt.subplots(figsize=(15, 15 * (grid.shape[0] / grid.shape[1])))
-        unique_ids = np.unique(grid)
-        max_id = unique_ids[unique_ids > 0].max() if (unique_ids > 0).any() else 0
-        colors = ["white"] + [plt.cm.tab20(i / 20) for i in range(int(max_id))]
-        cmap = mcolors.ListedColormap(colors)
-        norm = mcolors.BoundaryNorm(list(range(0, int(max_id) + 2)), cmap.N)
-        ax.imshow(grid, cmap=cmap, norm=norm, interpolation="nearest")
-        id_to_name = {v: k for k, v in dept_id_map.items()}
-        for dept_id in unique_ids[unique_ids > 0]:
-            ys, xs = np.where(grid == dept_id)
-            if len(xs) > 0:
-                cx, cy = np.mean(xs), np.mean(ys)
-                name = id_to_name.get(dept_id, f"ID {dept_id}")
-                col = cmap(norm(dept_id))
-                luminance = 0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2]
-                tcolor = "white" if luminance < 0.5 else "black"
-                rot = (
-                    90
-                    if (ys.max() - ys.min() + 1) > 1.5 * (xs.max() - xs.min() + 1)
-                    else 0
-                )
-                ax.text(
-                    cx,
-                    cy,
-                    name,
-                    va="center",
-                    ha="center",
-                    color=tcolor,
-                    fontsize=10,
-                    rotation=rot,
-                )
-        ax.set_title("Trực quan hóa Layout trên Lưới", fontsize=16)
-        ax.set_xticks(np.arange(-0.5, grid.shape[1], 1), minor=True)
-        ax.set_yticks(np.arange(-0.5, grid.shape[0], 1), minor=True)
-        ax.grid(which="minor", color="k", linestyle="-", linewidth=0.5)
-        ax.tick_params(which="minor", size=0)
-        ax.tick_params(
-            axis="both",
-            which="major",
-            bottom=False,
-            left=False,
-            labelbottom=False,
-            labelleft=False,
-        )
         plt.show()
 
     @staticmethod
@@ -198,6 +212,12 @@ class LayoutVisualizer:
         Plot giá trị best fitness theo trial của Optuna.
         """
         df = study.trials_dataframe()
+        plt.figure(figsize=(8, 4))
+        plt.plot(df["value"], marker="o")
+        plt.xlabel("Trial")
+        plt.ylabel("Fitness")
+        plt.title("Optuna Optimization Progress")
+        plt.show()
         plt.figure(figsize=(8, 4))
         plt.plot(df["value"], marker="o")
         plt.xlabel("Trial")

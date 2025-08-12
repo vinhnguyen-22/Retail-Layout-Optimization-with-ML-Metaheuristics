@@ -7,7 +7,7 @@ from loguru import logger
 
 from src.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR, SparkConfig
 from src.models.fpgrowth import FPGrowthRunner
-from src.spark_manager import SparkSessionManager
+from src.spark.spark_manager import SparkSessionManager
 
 app = typer.Typer(help="Retail Forecast Pipeline CLI")
 

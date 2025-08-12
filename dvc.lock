@@ -38,3 +38,11 @@ stages:
       hash: md5
       md5: 98a09e0cb29660783eb4c7103db36ca4
       size: 1049
+  layout-opt-pipeline:
+    cmd: python main.py layout-opt run --assoc-rules-path association_rules.csv 
+      --freq-itemsets-path frequent_itemsets.csv --layout-real-path layout.csv
+    deps:
+    - path: src/layout_opt_pipeline.py
+      hash: md5
+      md5: c7641cf6031e3342d1c77bcec939344a
+      size: 8892

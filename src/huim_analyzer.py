@@ -12,7 +12,7 @@ from pyspark.sql.types import ArrayType, StringType
 from src.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR, SPMF_JAR_FILE, SparkConfig
 from src.models.fpgrowth import FPGrowthRunner
 from src.models.huim import HUIMPipeline
-from src.spark_manager import SparkSessionManager
+from src.spark.spark_manager import SparkSessionManager
 
 app = typer.Typer(help="Retail Forecast Pipeline CLI")
 

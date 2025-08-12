@@ -6,25 +6,33 @@ stages:
   #   deps:
   #     - src/load_data.py
 
-  transform:
-    cmd: python main.py preprocess transform
-      --input-file transactions.csv
-      --output-file transaction_fpg.csv
-      --item-id SDeptName
-    deps:
-      - src/preprocess.py
-      - data/raw/transactions.csv
-    outs:
-      - data/interim/transaction_fpg.csv
+  # transform:
+  #   cmd: python main.py preprocess transform
+  #     --input-file transactions.csv
+  #     --output-file transaction_fpg.csv
+  #     --item-id SDeptName
+  #   deps:
+  #     - src/preprocess.py
+  #     - data/raw/transactions.csv
+  #   outs:
+  #     - data/interim/transaction_fpg.csv
 
-  fpgrowth:
-    cmd: python main.py fpgrowth run
-      --input-file transaction_fpg.csv
-    deps:
-      - src/fpg_analyzer.py
+  # fpgrowth:
+  #   cmd: python main.py fpgrowth run
+  #     --input-file transaction_fpg.csv
+  #   deps:
+  #     - src/fpg_analyzer.py
 
-  huim:
-    cmd: python main.py huim run
-      --input-file transaction_fpg.csv
+  # huim:
+  #   cmd: python main.py huim run
+  #     --input-file transaction_fpg.csv
+  #   deps:
+  #     - src/huim_analyzer.py
+
+  layout-opt-pipeline:
+    cmd: python main.py layout-opt run
+      --assoc-rules-path association_rules.csv
+      --freq-itemsets-path frequent_itemsets.csv
+      --layout-real-path layout.csv
     deps:
-      - src/huim_analyzer.py
+      - src/layout_opt_pipeline.py
