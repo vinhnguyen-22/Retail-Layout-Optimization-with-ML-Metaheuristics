@@ -42,10 +42,10 @@ stages:
     deps:
     - path: src/run_optimize_layout.py
       hash: md5
-      md5: 352d633bef0594bfafbe99cc7fbdbf4b
-      size: 1490
+      md5: e37021b6d9f7b32fdcfbe9750ff2ae03
+      size: 2144
   extract_layout:
-    cmd: python main.py preprocess extract-layout --pptx layout.pptx --out  
+    cmd: python main.py preprocess extract-layout --pptx layout.pptx --out 
       layout.csv
     deps:
     - path: data/external/layout.pptx
