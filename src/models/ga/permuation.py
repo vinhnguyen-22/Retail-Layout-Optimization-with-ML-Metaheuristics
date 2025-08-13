@@ -33,6 +33,27 @@ class PermutationGA(BaseGA):
         )
         self.toolbox = base.Toolbox()
         self._register_ops(selection, crossover, mutation)
+        # ---- mutation helpers ----
+
+    def _mut_swap_indexes(self, individual, indpb=0.2):
+        """Swap-based mutation: với xác suất indpb ở mỗi vị trí,
+        hoán đổi gene i với một vị trí ngẫu nhiên khác.
+        """
+        size = len(individual)
+        for i in range(size):
+            if random.random() < indpb:
+                j = random.randrange(size)
+                # swap
+                individual[i], individual[j] = individual[j], individual[i]
+        return (individual,)
+
+    def _mut_inverse_indexes_pb(self, individual, indpb=0.2):
+        """Bao bọc mutInverseIndexes để có indpb:
+        với xác suất indpb, chọn ngẫu nhiên 2 mốc và đảo ngược đoạn.
+        """
+        if random.random() < indpb:
+            return tools.mutInverseIndexes(individual)
+        return (individual,)
 
     def _register_ops(self, selection: str, crossover: str, mutation: str):
         items = self.items
@@ -95,19 +116,31 @@ class PermutationGA(BaseGA):
                 indpb=0.2,
             )
         elif mut == "swap":
+            # dùng bản tự viết thay cho tools.mutSwapIndexes (không tồn tại trong DEAP)
             self.toolbox.register(
                 "mutate",
                 lambda ind, indpb=0.2: self._index_mut_categories(
-                    ind, items, tools.mutSwapIndexes, indpb=indpb
+                    ind, items, self._mut_swap_indexes, indpb=indpb
+                ),
+                indpb=0.2,
+            )
+        elif mut == "invert":
+            # inversion có indpb (bọc lại)
+            self.toolbox.register(
+                "mutate",
+                lambda ind, indpb=0.2: self._index_mut_categories(
+                    ind, items, self._mut_inverse_indexes_pb, indpb=indpb
                 ),
                 indpb=0.2,
             )
         else:
+            # fallback an toàn: swap
             self.toolbox.register(
                 "mutate",
-                lambda ind: self._index_mut_categories(
-                    ind, items, tools.mutInverseIndexes
+                lambda ind, indpb=0.2: self._index_mut_categories(
+                    ind, items, self._mut_swap_indexes, indpb=indpb
                 ),
+                indpb=0.2,
             )
 
     def run(

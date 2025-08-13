@@ -1,4 +1,5 @@
 import random
+from enum import Enum
 from typing import List, Optional
 
 import numpy as np
@@ -14,6 +15,24 @@ from src.preprocess import DataLoader
 app = typer.Typer(help="Retail Forecast Pipeline CLI")
 
 
+class SelectionEnum(str, Enum):
+    tournament = "tournament"
+    roulette = "roulette"
+    rank = "rank"
+
+
+class CrossoverEnum(str, Enum):
+    PMX = "PMX"  # Partially Mapped Crossover (phù hợp permutation)
+    OX = "OX"  # Order Crossover
+    CX = "CX"  # Cycle Crossover
+
+
+class MutationEnum(str, Enum):
+    shuffle = "shuffle"  # swap/shuffle-based
+    swap = "swap"
+    invert = "invert"
+
+
 @app.command("run")
 def run(
     assoc_rules_path: str = str("association_rules.csv"),
@@ -22,9 +41,13 @@ def run(
     margin_matrix_path: str = None,
     n_trials: int = 30,
     n_gen_final: int = 100,
-    selection: str = "tournament",
-    crossover: str = "PMX",
-    mutation: str = "shuffle",
+    selection: SelectionEnum = typer.Option(
+        SelectionEnum.tournament, help="Selection strategy"
+    ),
+    crossover: CrossoverEnum = typer.Option(
+        CrossoverEnum.PMX, help="Crossover operator"
+    ),
+    mutation: MutationEnum = typer.Option(MutationEnum.swap, help="Mutation operator"),
     adaptive: bool = True,
     seed: int = 42,
 ):

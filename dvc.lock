@@ -45,7 +45,7 @@ stages:
       md5: 352d633bef0594bfafbe99cc7fbdbf4b
       size: 1490
   extract_layout:
-    cmd: python main.py preprocess extract-layout --pptx layout.pptx --out 
+    cmd: python main.py preprocess extract-layout --pptx layout.pptx --out  
       layout.csv
     deps:
     - path: data/external/layout.pptx
