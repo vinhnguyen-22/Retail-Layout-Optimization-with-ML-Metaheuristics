@@ -25,16 +25,6 @@ def _validate_df(df: pd.DataFrame) -> None:
         raise ValueError("DataFrame layout rỗng.")
 
 
-def _estimate_cell_size(df: pd.DataFrame) -> float:
-    min_dim = np.minimum(
-        df["width"].to_numpy(dtype=float), df["height"].to_numpy(dtype=float)
-    )
-    pos = min_dim[min_dim > 0]
-    if pos.size == 0:
-        return 5.0
-    return float(max(1.0, int(np.median(pos) / 4)))
-
-
 def _build_shared_mapping(
     df_a: pd.DataFrame, df_b: Optional[pd.DataFrame] = None
 ) -> Dict[str, int]:

@@ -1,8 +1,14 @@
 import ast
 import datetime
+import re
+import shutil
+import unicodedata
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import typer
+from tqdm import tqdm
 
 
 def array_to_list(x):
@@ -55,11 +61,30 @@ def safe_to_list(x):
     return [x]
 
 
-def extract_all_items(series):
-    items = []
-    for ser in series:
-        items += [item for sublist in ser.apply(eval) for item in sublist]
-    return items
+def sanitize_key(name: str) -> str:
+    """Chuyển tên nhóm thành tên file an toàn."""
+    key = unicodedata.normalize("NFD", name)
+    key = "".join([c for c in key if unicodedata.category(c) != "Mn"])
+    key = key.lower()
+    sanitized = re.sub(r"[^a-zA-Z0-9_]", "_", key)
+    sanitized = re.sub(r"_+", "_", sanitized)
+    sanitized = sanitized.strip("_")
+    return sanitized
 
 
-import pandas as pd
+def clear_files(directory: Path, extensions: list, delete_folders: bool = True):
+    if not directory.exists():
+        typer.echo(f"Directory {directory} does not exist, skip.")
+        return
+    files = [
+        f
+        for f in directory.rglob("*")
+        if f.is_file() and f.suffix.lower() in extensions
+    ]
+    for file in tqdm(files, desc=f"Deleting files in {directory}"):
+        file.unlink()
+
+    if delete_folders:
+        folders = [f for f in directory.iterdir() if f.is_dir()]
+        for folder in tqdm(folders, desc=f"Deleting subfolders in {directory}"):
+            shutil.rmtree(folder)

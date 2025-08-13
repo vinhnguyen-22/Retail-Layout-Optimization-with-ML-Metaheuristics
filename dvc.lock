@@ -6,31 +6,28 @@ stages:
     deps:
     - path: data/raw/transactions.csv
       hash: md5
-      md5: b0b59816e6e2859a8c98f0ea8f7dfd91
-      size: 279168838
+      md5: 8053c7c27b2d242a5f4f924b6c637204
+      size: 287934535
     - path: src/preprocess.py
       hash: md5
-      md5: e8b28d13a45e201636898ada46dfcaff
-      size: 1451
-    outs:
-    - path: data/interim/transaction_fpg.csv
-      hash: md5
-      md5: e124eea0ac53e664a668e93ef690bfce
-      size: 74522415
+      md5: 1c29111a71fd693b4ee0b0ca636e6d33
+      size: 6204
   fpgrowth:
-    cmd: python main.py fpgrowth run --input-file transaction_fpg.csv
+    cmd: python main.py association_rules run_fpgrowth --input-file 
+      transaction_fpg.csv
     deps:
-    - path: src/fpg_analyzer.py
+    - path: src/association_rules.py
       hash: md5
-      md5: 795d1c4fbb264016b7a60a151871aea1
-      size: 1097
+      md5: 1ead799ea8289f3dec111167c94b92ad
+      size: 3099
   huim:
-    cmd: python main.py huim run --input-file transaction_fpg.csv
+    cmd: python main.py association_rules run_huim --input-file 
+      transaction_fpg.csv
     deps:
-    - path: src/huim_analyzer.py
+    - path: src/association_rules.py
       hash: md5
-      md5: 0296675dec1abcfa43f4b6c9aa734d24
-      size: 2426
+      md5: 1ead799ea8289f3dec111167c94b92ad
+      size: 3099
   load-data:
     cmd: python main.py load-data run --date 230101 --store-id 399
     deps:
@@ -40,9 +37,22 @@ stages:
       size: 1049
   layout-opt-pipeline:
     cmd: python main.py layout-opt run --assoc-rules-path association_rules.csv 
-      --freq-itemsets-path frequent_itemsets.csv --layout-real-path layout.csv
+      --freq-itemsets-path frequent_itemsets.csv --layout-real-path layout.csv 
+      --n-trials 30
     deps:
-    - path: src/layout_opt_pipeline.py
+    - path: src/run_optimize_layout.py
       hash: md5
-      md5: c7641cf6031e3342d1c77bcec939344a
-      size: 8892
+      md5: 352d633bef0594bfafbe99cc7fbdbf4b
+      size: 1490
+  extract_layout:
+    cmd: python main.py preprocess extract-layout --pptx layout.pptx --out 
+      layout.csv
+    deps:
+    - path: data/external/layout.pptx
+      hash: md5
+      md5: 55e04e045d92666cf03b5ca23ca1175a
+      size: 310584
+    - path: src/preprocess.py
+      hash: md5
+      md5: 25504e36fc80f73e6f120e31174ef08d
+      size: 7687

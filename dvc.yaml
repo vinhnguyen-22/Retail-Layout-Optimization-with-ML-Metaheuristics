@@ -14,25 +14,32 @@ stages:
   #   deps:
   #     - src/preprocess.py
   #     - data/raw/transactions.csv
-  #   outs:
-  #     - data/interim/transaction_fpg.csv
 
   # fpgrowth:
-  #   cmd: python main.py fpgrowth run
+  #   cmd: python main.py association_rules run_fpgrowth
   #     --input-file transaction_fpg.csv
   #   deps:
-  #     - src/fpg_analyzer.py
+  #     - src/association_rules.py
 
   # huim:
-  #   cmd: python main.py huim run
+  #   cmd: python main.py association_rules run_huim
   #     --input-file transaction_fpg.csv
   #   deps:
-  #     - src/huim_analyzer.py
+  #     - src/association_rules.py
+
+  extract_layout:
+    cmd: python main.py preprocess extract-layout
+      --pptx layout.pptx
+      --out  layout.csv
+    deps:
+      - src/preprocess.py
+      - data/external/layout.pptx
 
   layout-opt-pipeline:
     cmd: python main.py layout-opt run
       --assoc-rules-path association_rules.csv
       --freq-itemsets-path frequent_itemsets.csv
       --layout-real-path layout.csv
+      --n-trials 30
     deps:
-      - src/layout_opt_pipeline.py
+      - src/run_optimize_layout.py

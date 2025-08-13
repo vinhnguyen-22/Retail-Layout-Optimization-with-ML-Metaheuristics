@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Dict
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -49,3 +50,21 @@ class SparkConfig:
         self.executor_memory = executor_memory
         self.cores = cores
         self.shuffle_partitions = shuffle_partitions
+
+
+REFRIGERATED_CATEGORIES = [
+    "Thit dong lanh",
+    "Tau hu cac loai",
+    "Kem cac loai",
+    "Tru mat khac (FLAN)",
+    "San pham che bien d.lanh",
+    "Com, xoi dong lanh",
+    "Rau,cu,trai cay dong lanh",
+    "Cha gio",
+    "San pham ch.bien dong goi",
+    "Hai san dong lanh",
+]
+FLAGS_BY_CATEGORY = {
+    "is_entrance": ["Giay Ve Sinh"],
+    "is_cashier": ["Mat ong"],
+}

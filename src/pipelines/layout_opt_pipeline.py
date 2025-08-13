@@ -1,28 +1,29 @@
-# src/pipelines/pipeline_layout_opt.py
 import random
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 import optuna
 import pandas as pd
-import typer
 from loguru import logger
 
-from src.config import INTERIM_DATA_DIR, OUTPUT_DATA_DIR, PROCESSED_DATA_DIR
+from src.config import FIGURES_DIR, PROCESSED_DATA_DIR
 from src.models.affinity import AffinityBuilder
 from src.models.ga_optimizer import GAOptimizer
-from src.models.greedy import GreedyLayout
 from src.plots import LayoutVisualizer
 from src.preprocess import DataLoader
 from src.services.affinity_services import AffinityParams, AffinityService
 from src.services.layout_context import LayoutContext
 from src.services.layout_tuner import LayoutTuner
 
-app = typer.Typer(help="Retail Forecast Pipeline CLI")
 
-
-# =============== Pipeline ===============
 class LayoutOptimizationPipeline:
+    """
+    Pipeline tối ưu layout:
+    - Tách Entrance/Cashier từ DataLoader (slots đã lọc sẵn).
+    - Vector hoá tạo layout_opt, tránh copy không cần thiết.
+    - Tuỳ chọn lọc category ‘lạc loài’ trước khi xuất/vẽ.
+    """
+
     def __init__(
         self,
         data: DataLoader,
@@ -34,6 +35,10 @@ class LayoutOptimizationPipeline:
         mutation: str = "shuffle",
         adaptive: bool = True,
         seed: int = 42,
+        # tuỳ chọn nâng cao
+        pop_size: int = 200,
+        elite_ratio: float = 0.06,
+        write_logbook: bool = True,  # ghi logbook CSV
     ):
         self.data = data
         self.n_trials = n_trials
@@ -43,25 +48,29 @@ class LayoutOptimizationPipeline:
         self.adaptive = adaptive
         self.seed = seed
 
+        self.pop_size = pop_size
+        self.elite_ratio = elite_ratio
+        self.write_logbook = write_logbook
+
         np.random.seed(seed)
         random.seed(seed)
 
         self.all_items: List[str] = data.all_items
         self.refrig_cats: List[str] = data.refrig_cats
 
-        # Affinity builder gốc
-        self.affinity_builder = AffinityBuilder(
-            self.data.assoc_rules,
-            self.data.freq_itemsets,
-            self.data.all_items,
-            self.data.margin_matrix,
+        self.aff_svc = AffinityService(
+            AffinityBuilder(
+                self.data.assoc_rules,
+                self.data.freq_itemsets,
+                self.data.all_items,
+                self.data.margin_matrix,
+            )
         )
 
-        # Services
-        self.aff_svc = AffinityService(self.affinity_builder)
+        # Context
         self.ctx = LayoutContext(self.data, self.all_items, self.refrig_cats)
 
-        # Tuner (Optuna)
+        # Tuner
         self.tuner = LayoutTuner(
             aff_svc=self.aff_svc,
             ctx=self.ctx,
@@ -76,7 +85,6 @@ class LayoutOptimizationPipeline:
         )
 
         # holders
-        self.study: Optional[optuna.Study] = None
         self.best_params: Optional[dict] = None
         self.best_layout: Optional[List[str]] = None
         self.affinity = None
@@ -88,7 +96,6 @@ class LayoutOptimizationPipeline:
     # ---- Public API ----
     def tune(self):
         if not self.use_optuna:
-            # chạy nhanh không tune: giữ tham số mặc định hợp lý
             self.best_params = {
                 "lift_threshold": 0.5,
                 "w_lift": 0.6,
@@ -100,27 +107,23 @@ class LayoutOptimizationPipeline:
                 "gamma_support": 0.0,
             }
             self.best_layout = self.ctx.trim_to_slots(self.ctx.seed_layout_real())
-            self.study = None
-            self.best_logbook = None
             logger.info("Tune skipped. Using default params.")
             return None
 
         best_params, best_layout, study = self.tuner.tune()
-        self.study = study
         self.best_params = best_params
         self.best_layout = best_layout
-        self.best_logbook = None
 
         logger.info(f"Best params: {self.best_params}")
         logger.info(f"Best layout (from Optuna): {self.best_layout}")
         return study
 
-    def run_final(self):
-        if not hasattr(self, "best_params") or self.best_params is None:
+    def run_final(self) -> Tuple[pd.DataFrame, float]:
+        if not self.best_params:
             raise RuntimeError("Hãy gọi tune() trước.")
 
         p = self.best_params
-        affinity = self.aff_svc.build(
+        self.affinity = self.aff_svc.build(
             AffinityParams(
                 lift_threshold=p["lift_threshold"],
                 w_lift=p["w_lift"],
@@ -130,7 +133,7 @@ class LayoutOptimizationPipeline:
             )
         )
 
-        # lazy theo w_entr/gamma_support
+        # Tính coords/entr nếu cần
         coords = entr_xy = None
         cat_support = None
         if p["w_entr"] > 0:
@@ -140,10 +143,9 @@ class LayoutOptimizationPipeline:
 
         baseline = self.ctx.seed_layout_real()
 
-        # One-optimizer
         ga = GAOptimizer(
             all_items=self.all_items,
-            affinity_matrix=affinity,
+            affinity_matrix=self.affinity,
             refrig_cats=self.refrig_cats,
             hard_rules={},
             coords=coords,
@@ -157,113 +159,68 @@ class LayoutOptimizationPipeline:
             mutation=self.mutation,
         )
 
-        # lưu logbook final ra CSV
-        log_csv = PROCESSED_DATA_DIR / "ga_logbook_final.csv"
-
         best_layout, best_fitness, logbook = ga.run(
             ngen=self.n_gen_final,
-            pop_size=200,  # cố định để repeatable
+            pop_size=self.pop_size,
             seed=self.seed,
-            elite_ratio=0.06,  # cố định
+            elite_ratio=self.elite_ratio,
             adaptive=self.adaptive,
             baseline=baseline,
-            log_csv_path=str(log_csv),
             as_dataframe=True,
         )
 
-        # lưu logbook để vẽ
+        # Lưu logbook (nếu chưa có)
         self.ga_logbook = getattr(ga, "logbook_df", None)
-        if self.ga_logbook is None:
+        if self.ga_logbook is None and isinstance(logbook, (list, pd.DataFrame)):
             try:
                 self.ga_logbook = pd.DataFrame(logbook)
             except Exception:
                 self.ga_logbook = None
 
-        # Xuất file theo slot (y,x)
-        best_layout = [str(c) for c in self.ctx.trim_to_slots(best_layout)]
-        slots = self.data.sorted_slots_xy()
-        n = min(len(best_layout), len(slots))
-        layout_opt = pd.DataFrame(
-            {
-                "Category": best_layout[:n],
-                "x": slots.loc[: n - 1, "x"].to_list(),
-                "y": slots.loc[: n - 1, "y"].to_list(),
-                "width": slots.loc[: n - 1, "width"].to_list(),
-                "height": slots.loc[: n - 1, "height"].to_list(),
-            }
-        )
-        layout_opt["cx"] = layout_opt["x"] + layout_opt["width"] / 2.0
-        layout_opt["cy"] = layout_opt["y"] + layout_opt["height"] / 2.0
+        bl = list(map(str, self.ctx.trim_to_slots(self.best_layout or baseline)))
+        # Lắp vào slots theo thứ tự (y,x) — vector hoá
+        slots = self.data.sorted_slots_xy().iloc[: len(bl)].copy()
+        slots.loc[:, "Category"] = pd.Series(bl, index=slots.index)
+        slots["cx"] = slots["x"] + slots["width"] / 2.0
+        slots["cy"] = slots["y"] + slots["height"] / 2.0
 
-        self.affinity = affinity
-        self.layout_opt = layout_opt
-        self.best_fitness = best_fitness
+        self.layout_opt = slots[["Category", "x", "y", "width", "height", "cx", "cy"]]
+        self.best_fitness = float(best_fitness)
 
-        logger.info(f"\nBest layout: {best_layout}")
         logger.info(f"Best fitness: {best_fitness:.4f}")
-        return layout_opt, best_fitness
+        return self.layout_opt, self.best_fitness
 
     def plot_all(self):
-        if not hasattr(self, "layout_opt") or self.layout_opt is None:
+        if self.layout_opt is None or self.affinity is None:
             logger.info("Hãy chạy run_final() trước khi plot.")
             return
-        LayoutVisualizer.plot_affinity_heatmap(self.affinity)
-        LayoutVisualizer.plot_affinity_bar(self.affinity)
-        # Ưu tiên logbook final; nếu không có thì dùng best_logbook từ tune()
+
+        # Affinity plots
+        LayoutVisualizer.plot_affinity_heatmap(
+            self.affinity, out_png=FIGURES_DIR / "affinity_heatmap.png"
+        )
+        LayoutVisualizer.plot_affinity_bar(
+            self.affinity, out_png=FIGURES_DIR / "affinity_bar.png"
+        )
+
+        # GA curve (đổi tên không đè)
         log_df = self.ga_logbook if self.ga_logbook is not None else self.best_logbook
         if log_df is not None and not log_df.empty:
-            LayoutVisualizer.plot_ga_convergence(log_df)
-        LayoutVisualizer.plot_spring_layout(self.affinity, threshold=0.8)
+            LayoutVisualizer.plot_ga_convergence(
+                log_df, out_png=FIGURES_DIR / "ga_convergence.png"
+            )
+
+        # Spring layout + visualize
+        LayoutVisualizer.plot_spring_layout(
+            self.affinity, threshold=0.8, out_png=FIGURES_DIR / "spring_layout.png"
+        )
         LayoutVisualizer.plot_visualize_layout(
-            self.layout_opt,
-            out_png=OUTPUT_DATA_DIR / "ga_preview.png",
+            df_layout=self.layout_opt,
+            out_png=FIGURES_DIR / "ga_preview.png",
             show_labels=True,
         )
         LayoutVisualizer.plot_compare_layouts(
             df_after=self.layout_opt,
             df_before=self.data.layout_real,
-            out_png=OUTPUT_DATA_DIR / "ga_compare.png",
-            show_labels=True,
+            out_png=FIGURES_DIR / "ga_compare.png",
         )
-
-
-# =============== Example usage ===============
-@app.command("run")
-def run(
-    assoc_rules_path: str = str("association_rules.csv"),
-    freq_itemsets_path: str = str("frequent_itemsets.csv"),
-    layout_real_path: str = str("layout.csv"),
-    margin_matrix_path: str = None,
-    n_trials: int = 20,
-    n_gen_final: int = 80,
-    selection: str = "tournament",
-    crossover: str = "PMX",
-    mutation: str = "shuffle",
-    adaptive: bool = True,
-    seed: int = 42,
-):
-    data = DataLoader(
-        assoc_rules_path=PROCESSED_DATA_DIR / assoc_rules_path,
-        freq_itemsets_path=PROCESSED_DATA_DIR / freq_itemsets_path,
-        layout_real_path=INTERIM_DATA_DIR / layout_real_path,
-        margin_matrix_path=margin_matrix_path,
-    )
-
-    pipeline = LayoutOptimizationPipeline(
-        data=data,
-        n_trials=n_trials,
-        n_gen_final=n_gen_final,
-        selection=selection,
-        crossover=crossover,
-        mutation=mutation,
-        adaptive=adaptive,
-        seed=seed,
-    )
-
-    pipeline.tune()
-    pipeline.run_final()
-    pipeline.plot_all()
-
-
-if __name__ == "__main__":
-    app()

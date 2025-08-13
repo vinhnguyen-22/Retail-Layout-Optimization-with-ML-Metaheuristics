@@ -41,7 +41,10 @@ class LayoutContext:
         if self._coords_cached is not None and override_entr_xy is None:
             return self._coords_cached
 
-        slots = self.data.sorted_slots_xy()
+        slots = self.data.sorted_slots_xy().assign(
+            width=lambda d: d["width"].fillna(0), height=lambda d: d["height"].fillna(0)
+        )
+
         coords = list(
             zip(
                 slots["x"] + slots["width"] * 0.5,
