@@ -19,6 +19,18 @@ class GAOptimizer:
         coords: Optional[List[Tuple[float, float]]] = None,
         entr_xy: Optional[Tuple[float, float]] = None,
         cat_support: Optional[Dict[str, float]] = None,
+        # ---------- NEW: diện tích ----------
+        item_area: Optional[Dict[str, float]] = None,  # diện tích/footprint mỗi item
+        slot_area: Optional[
+            List[float]
+        ] = None,  # sức chứa diện tích mỗi slot (khớp với coords[i])
+        w_area: float = 0.0,  # trọng số phạt overflow
+        w_area_slack: float = 0.0,  # (tùy chọn) phạt phần thừa nhẹ
+        # ---------- NEW: sector/grouping ----------
+        category_sector: Optional[Dict[str, str]] = None,  # map Category -> SectorCode
+        w_sector_adj: float = 0.0,  # thưởng kề nhau cùng sector
+        w_sector_disp: float = 0.0,  # phạt phân tán sector
+        # ---------- weights/GA ----------
         w_aff: float = 1.0,
         w_entr: float = 0.0,
         gamma_support: float = 0.7,
@@ -33,6 +45,16 @@ class GAOptimizer:
             coords=coords,
             entr_xy=entr_xy,
             cat_support=cat_support,
+            # --- diện tích ---
+            item_area=item_area,
+            slot_area=slot_area,
+            w_area=w_area,
+            w_area_slack=w_area_slack,
+            # --- sector ---
+            category_sector=category_sector,
+            w_sector_adj=w_sector_adj,
+            w_sector_disp=w_sector_disp,
+            # --- cũ ---
             w_aff=w_aff,
             w_pair=0.0,  # đã bỏ pairs
             w_entr=w_entr,
@@ -95,4 +117,5 @@ class GAOptimizer:
             except Exception:
                 self.logbook_df = None
 
+        # FIX: bỏ dòng return trùng lặp
         return best_layout, best_fitness, logbook

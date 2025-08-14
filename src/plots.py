@@ -25,6 +25,226 @@ from src.utils.plot_utils import (
 
 
 class LayoutVisualizer:
+    from pathlib import Path
+
+
+from typing import Dict, List, Optional
+
+import pandas as pd
+
+
+class LayoutVisualizer:
+
+    @staticmethod
+    def plot_visualize_layout_plotly(
+        df_layout: pd.DataFrame,
+        out_html: Path,
+        *,
+        cmap_name: str = "tab20",  # có thể ghép: "tab20|tab20b|tab20c"
+        name2id: Optional[
+            Dict[str, int]
+        ] = None,  # mapping Category -> id; nếu None sẽ thử _build_shared_mapping rồi fallback
+        show_labels: bool = True,  # 1 nhãn/Category (tránh đè)
+        label_fontsize: int = 9,
+        padding_ratio: float = 0.02,
+        min_label_area: float = 6.0,  # ẩn nhãn nếu tổng diện tích Category quá nhỏ
+        dedupe_geometry: bool = True,  # bỏ slot trùng (x,y,w,h,Category)
+        show_legend: bool = True,
+        title: str = "Layout (GA) — interactive",
+    ) -> None:
+        import numpy as np
+        import plotly.graph_objects as go
+        from matplotlib import cm
+
+        # ---- validate ----
+        need_cols = {"Category", "x", "y", "width", "height"}
+        missing = need_cols - set(df_layout.columns)
+        if missing:
+            raise ValueError(f"Thiếu cột bắt buộc trong layout: {sorted(missing)}")
+        if df_layout.empty:
+            raise ValueError("DataFrame layout rỗng.")
+
+        # ---- clean copy & types ----
+        df = df_layout.copy()
+        df["Category"] = (
+            df["Category"].astype(str).str.strip()
+        )  # tránh lệch màu do khoảng trắng
+        for c in ["x", "y", "width", "height"]:
+            df[c] = df[c].astype(float)
+        if not {"cx", "cy"}.issubset(df.columns):
+            df["cx"] = df["x"] + df["width"] / 2.0
+            df["cy"] = df["y"] + df["height"] / 2.0
+
+        # ---- bounds + padding ----
+        x0, y0 = float(df["x"].min()), float(df["y"].min())
+        x1 = float((df["x"] + df["width"]).max())
+        y1 = float((df["y"] + df["height"]).max())
+        pad_x = (x1 - x0) * float(padding_ratio)
+        pad_y = (y1 - y0) * float(padding_ratio)
+        min_x, min_y = x0 - pad_x, y0 - pad_y
+        max_x, max_y = x1 + pad_x, y1 + pad_y
+
+        # ---- stable mapping Category -> id (giống matplotlib) ----
+        if name2id is None:
+            try:
+                # nếu project có helper này, dùng để giữ ID/màu y hệt như bản matplotlib
+                name2id = _build_shared_mapping(df)  # type: ignore[name-defined]
+            except Exception:
+                cats_sorted = sorted(df["Category"].unique())
+                name2id = {c: i + 1 for i, c in enumerate(cats_sorted)}
+        max_id = max(name2id.values()) if name2id else 1
+
+        # ---- DISCRETE palette (không nội suy) ----
+        # cho phép ghép nhiều cmap bằng dấu |
+        def _collect_listed_colors(spec: str):
+            parts = [s.strip() for s in spec.split("|")]
+            colors = []
+            for p in parts:
+                cmap = cm.get_cmap(p)
+                if hasattr(cmap, "colors"):  # ListedColormap (vd: tab20)
+                    colors.extend(list(cmap.colors))
+                else:  # continuous -> sample rời rạc 12 điểm
+                    colors.extend([cmap(i / 11.0) for i in range(12)])
+            return colors or list(cm.get_cmap("tab20").colors)
+
+        base_colors = _collect_listed_colors(cmap_name)
+        L = len(base_colors)
+
+        def _rgba_str(rgba, alpha=1.0):
+            r, g, b = rgba[:3]
+            return f"rgba({int(r*255)},{int(g*255)},{int(b*255)},{alpha})"
+
+        # map màu rời rạc theo id (id-1) % L → giống cách vẽ discrete trong matplotlib
+        color_map: Dict[str, str] = {
+            cat: _rgba_str(base_colors[(int(idx) - 1) % L], 1.0)
+            for cat, idx in name2id.items()
+        }
+
+        # ---- dedupe hình học để tránh đúp hover/label ----
+        df_draw = (
+            df.drop_duplicates(subset=["x", "y", "width", "height", "Category"])
+            if dedupe_geometry
+            else df
+        )
+
+        # ---- shapes (tô màu theo colormap) ----
+        shapes = []
+        for r in df_draw.itertuples(index=False):
+            if r.width <= 0 or r.height <= 0:
+                continue
+            shapes.append(
+                dict(
+                    type="rect",
+                    x0=float(r.x),
+                    y0=float(r.y),
+                    x1=float(r.x + r.width),
+                    y1=float(r.y + r.height),
+                    line=dict(color="rgba(0,0,0,0.25)", width=1),
+                    fillcolor=color_map.get(r.Category, "rgba(204,204,204,1.0)"),
+                    layer="below",
+                )
+            )
+
+        fig = go.Figure()
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=14), x=0.05),
+            shapes=shapes,
+            margin=dict(l=10, r=10, t=40, b=10),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+        )
+        # Khoá tỉ lệ 1:1 và ĐẢO trục Y (không bị lật)
+        fig.update_xaxes(
+            range=[min_x, max_x],
+            visible=False,
+            showgrid=False,
+            zeroline=False,
+            scaleanchor="y",
+            scaleratio=1,
+        )
+        fig.update_yaxes(
+            range=[max_y, min_y], visible=False, showgrid=False, zeroline=False
+        )
+
+        # ---- Hover từng slot: marker "vô hình" đặt ở tâm ô ----
+        hoverdata = np.stack(
+            [
+                df_draw["Category"].values.astype(str),
+                df_draw["x"].values.astype(float),
+                df_draw["y"].values.astype(float),
+                df_draw["width"].values.astype(float),
+                df_draw["height"].values.astype(float),
+            ],
+            axis=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=df_draw["cx"],
+                y=df_draw["cy"],
+                mode="markers",
+                marker=dict(size=10, opacity=0),
+                customdata=hoverdata,
+                hovertemplate=(
+                    "Category: %{customdata[0]}<br>"
+                    "x: %{customdata[1]:.2f} | y: %{customdata[2]:.2f}<br>"
+                    "w: %{customdata[3]:.2f} | h: %{customdata[4]:.2f}"
+                    "<extra></extra>"
+                ),
+                showlegend=False,
+            )
+        )
+        fig.update_layout(hovermode="closest")
+
+        # ---- 1 nhãn / Category (tâm trọng số diện tích) ----
+        if show_labels:
+            df["area"] = df["width"] * df["height"]
+            g = (
+                df.groupby("Category", as_index=False)
+                .apply(
+                    lambda d: pd.Series(
+                        {
+                            "cx": (d["cx"] * d["area"]).sum()
+                            / max(d["area"].sum(), 1e-9),
+                            "cy": (d["cy"] * d["area"]).sum()
+                            / max(d["area"].sum(), 1e-9),
+                            "sum_area": d["area"].sum(),
+                        }
+                    )
+                )
+                .reset_index(drop=True)
+            )
+            g = g[g["sum_area"] >= float(min_label_area)]
+            fig.add_trace(
+                go.Scatter(
+                    x=g["cx"],
+                    y=g["cy"],
+                    mode="text",
+                    text=g["Category"],
+                    textposition="middle center",
+                    textfont=dict(size=int(label_fontsize), color="black"),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+
+        # ---- legend màu ổn định (shapes không lên legend) ----
+        if show_legend:
+            for cat in sorted(name2id.keys(), key=lambda c: name2id[c]):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[min_x],
+                        y=[min_y],
+                        mode="markers",
+                        marker=dict(size=8, color=color_map[cat]),
+                        name=cat,
+                        hoverinfo="skip",
+                        visible="legendonly",
+                    )
+                )
+
+        out_html = Path(out_html)
+        out_html.parent.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(out_html), include_plotlyjs="cdn", full_html=True)
 
     @staticmethod
     def plot_visualize_layout(

@@ -89,7 +89,3 @@ class LayoutContext:
                         cs[it] = max(cs[it], sup)
         self._cat_support_cached = cs
         return cs
-
-    def trim_to_slots(self, layout: List[str]) -> List[str]:
-        # dùng số slot thực có trong sorted_slots_xy
-        return layout[: len(self.data.sorted_slots_xy())]

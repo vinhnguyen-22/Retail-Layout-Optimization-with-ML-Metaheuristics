@@ -2,7 +2,7 @@ import ast
 import random
 import unicodedata
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -77,6 +77,10 @@ def extract_layout(
     Đọc shapes từ PPTX (mm) và xuất CSV gồm:
     Category, x, y, width, height, is_refrigerated, is_entrance, is_cashier
     """
+    sku = pd.read_csv(RAW_DATA_DIR / "sku.csv")[
+        ["Nganh hang", "SDeptName"]
+    ].drop_duplicates()
+
     # 1) Chuẩn hoá chuỗi
     norm = lambda s: "".join(
         ch
@@ -122,6 +126,17 @@ def extract_layout(
         if must not in df.columns:
             df[must] = 0
     out_path = INTERIM_DATA_DIR / output_csv
+
+    df = (
+        df.merge(
+            sku,
+            how="left",
+            left_on="Category",
+            right_on="SDeptName",
+        )
+        .drop(columns=["SDeptName"])
+        .rename(columns={"Nganh hang": "Sector"})
+    ).drop_duplicates(subset="Category")
     df.to_csv(out_path, index=False)
     typer.echo(f"Wrote {len(df)} rows to {out_path}")
 
@@ -132,6 +147,7 @@ class DataLoader:
     - Loại Entrance/Cashier khỏi slots ngay từ đầu.
     - Cache bảng slots đã sort theo (y, x) để dùng lại nhanh.
     - Xây dựng all_items từ rules + itemsets + categories của slot bày hàng.
+    - NEW: chuẩn bị slot_area (width*height) và item_area (nếu có).
     """
 
     def __init__(
@@ -153,6 +169,19 @@ class DataLoader:
         self.positions = None
         self.all_items: List[str] = []
         self.refrig_cats: List[str] = []
+
+        # NEW holders
+        self.slot_area_list: List[float] = []  # align với sorted_slots_xy()
+        self.item_area: Dict[str, float] = (
+            {}
+        )  # diện tích chuẩn của từng Category (nếu có)
+        self.category_sector = dict(
+            zip(
+                self.layout_real["Category"].astype(str),
+                self.layout_real["Sector"].astype(str),
+            )
+        )
+
         self._process()
 
     def _process(self):
@@ -196,6 +225,11 @@ class DataLoader:
         )
         self._slots_xy = slots[["Category", "x", "y", "width", "height"]].copy()
 
+        # NEW: slot_area_list theo thứ tự slots (khớp coords và GA)
+        self.slot_area_list = (
+            (self._slots_xy["width"] * self._slots_xy["height"]).astype(float).tolist()
+        )
+
         # Cập nhật all_items chỉ với categories của slot bày hàng
         layout_cats = slots["Category"].dropna().astype(str).tolist()
         all_items.update(layout_cats)
@@ -208,10 +242,48 @@ class DataLoader:
             .tolist()
         )
 
+        # NEW: item_area nếu dữ liệu có (tùy chọn)
+        # Ưu tiên cột 'item_area' nếu tồn tại (ví dụ bạn đã merge metadata)
+        if "item_area" in self.layout_real.columns:
+            # lấy median diện tích theo Category để ổn định
+            area_by_cat = (
+                self.layout_real.groupby(self.layout_real["Category"].astype(str))[
+                    "item_area"
+                ]
+                .median()
+                .to_dict()
+            )
+            self.item_area = {
+                cat: float(area_by_cat.get(cat, 1.0)) for cat in self.all_items
+            }
+        else:
+            # Không có dữ liệu → để trống; pipeline sẽ fallback 1.0
+            self.item_area = {}
+
     # helpers
     def sorted_slots_xy(self) -> pd.DataFrame:
         # trả bản cache (đã sort & fill width/height)
         return self._slots_xy.copy()
+
+    # NEW: helpers cho GA/Pipeline
+    def get_slot_area(self, n: Optional[int] = None) -> List[float]:
+        """Trả danh sách slot_area (width*height) theo thứ tự slots. Cắt còn n phần tử nếu n được cung cấp."""
+        if n is None:
+            return list(self.slot_area_list)
+        return list(self.slot_area_list[: max(0, int(n))])
+
+    def get_item_area_dict(
+        self, all_items: Optional[List[str]] = None, default: float = 1.0
+    ) -> Dict[str, float]:
+        """
+        Trả dict diện tích theo Category. Nếu không có dữ liệu → trả default cho từng item.
+        """
+        if all_items is None:
+            all_items = self.all_items
+        if self.item_area:
+            # đảm bảo đủ key
+            return {cat: float(self.item_area.get(cat, default)) for cat in all_items}
+        return {cat: float(default) for cat in all_items}
 
 
 if __name__ == "__main__":
