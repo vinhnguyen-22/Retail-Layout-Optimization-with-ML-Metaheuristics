@@ -1,4 +1,4 @@
-# Models
+# 2. Models
 
 ## FP-Growth
 FP-Growth is an algorithm used to **identify groups of products that are frequently purchased together, based on their occurrence frequency in transaction data**. It employs an FP-tree structure to efficiently organize the data and reduce processing time. FP-Growth is suitable for discovering common associations between products but does not consider transaction value, which means it may overlook infrequent combinations with high utility.
@@ -13,9 +13,16 @@ Appling Genetic Algorithm (GA) in Store Layout Optimization: Genetic Algorithm (
 -	**Evaluation:** Assess the performance of each layout using a fitness function based on criteria such as total revenue and product group synergy.
 -	**Generation:** Produce new layout options by combining and mutating the most effective configurations.
 -	**Iteration:** Repeat the process across multiple generations to gradually improve solution quality.
-
+cd
 ## Greedy and Local Search
 
-- **Greedy Search** is a strategy that selects the best option at each current step, with the hope that locally optimal choices will lead to a globally optimal solution. However, this method does not guarantee finding the best overall solution.
+### Greedy Search
+This is a strategy that selects the best option at each current step, with the hope that locally optimal choices will lead to a globally optimal solution. However, this method does not guarantee finding the best overall solution.
 
-- **Local Search** starts with a feasible solution and gradually improves it by exploring neighboring solutions to find better ones. This approach is suitable for problems with a very large solution space, where exploring all possible options is impractical.
+### Local Search
+Local search starts with a feasible solution and gradually improves it by exploring neighboring solutions to find better ones. This approach is suitable for problems with a very large solution space, where exploring all possible options is impractical.
+
+## Simulated Annealing
+Simulated Annealing (SA) is an optimization technique inspired by the annealing process in metallurgy, allowing temporary acceptance of worse solutions to escape local optima. **In retail shelf layout optimization, SA starts with a feasible layout and then swaps or adjusts product group positions to search for better configurations.** The probability of accepting a worse solution decreases over time (“temperature”), balancing global exploration with local refinement, ultimately yielding a layout close to optimal in terms of sales and display efficiency.
+
+
