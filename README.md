@@ -1,438 +1,289 @@
-# 🛒 Retail Sales Forecasting System
+# Retail Layout Optimization with ML & Metaheuristics
 
-A production-grade, modular, and scalable platform for **sales forecasting across multiple stores and product groups**, built for large retailers.
-Combines state-of-the-art ML (XGBoost, LightGBM), statistical models (Prophet), clustering, and GenAI (LLM RAG), fully automated with MLOps best practices (DVC, MLflow, Airflow, Dagster, FastAPI, Streamlit)
+> Data-driven optimization for in-store product placement and floor planning using association analysis & evolutionary search.
 
----
-
-## 📖 Table of Contents
-
-- [🛒 Retail Sales Forecasting System](#-retail-sales-forecasting-system)
-  - [📖 Table of Contents](#-table-of-contents)
-  - [📝 Project Overview](#-project-overview)
-  - [🚀 Features](#-features)
-  - [📁 Project Structure](#-project-structure)
-  - [⚙️ Installation](#️-installation)
-  - [🛠 Usage](#-usage)
-    - [1️⃣ **DVC Pipeline**](#1️⃣-dvc-pipeline)
-    - [2️⃣ **Dagster Pipeline**](#2️⃣-dagster-pipeline)
-    - [3️⃣ **Python CLI / Typer**](#3️⃣-python-cli--typer)
-    - [4️⃣ **Serving and Visualization**](#4️⃣-serving-and-visualization)
-    - [5️⃣ Documentation Site](#5️⃣-documentation-site)
-      - [**View docs:**](#view-docs)
-  - [📊 Outputs](#-outputs)
-  - [📈 Evaluation Metrics](#-evaluation-metrics)
-  - [🏗️ Architecture \& Workflow](#️-architecture--workflow)
-  - [🚦 Future Roadmap](#-future-roadmap)
-  - [👤 Author](#-author)
-  - [📜 License](#-license)
+This repository provides an end-to-end pipeline to **analyze retail transactions**, **learn affinities and association rules**, and **search for near-optimal layouts** using **metaheuristics** (Genetic Algorithm, Simulated Annealing, Tabu Search).  
+The objective is to **increase sales**, **improve customer experience**, and **maximize retail space utilization**.
 
 ---
 
-## 📝 Project Overview
+## 🔑 Key Features
 
-This system is designed for **sales forecasting at scale** (multiple stores, many products, multi-region).
-The pipeline is fully automated and modular, supporting:
-
-- **Data ingestion** (from multiple sources)
-- **Preprocessing & feature engineering** (statistical, business, auto features, LLM-RAG)
-- **Clustering & specialization** (tailored models per group)
-- **Hybrid modeling** (XGBoost, LightGBM, Prophet, LLM)
-- **Multi-step, multi-level forecasting** (recursive, direct, hybrid, hierarchical reconciliation)
-- **Monitoring, explainability, and reporting** (Streamlit, SHAP, LLM reports)
-- **MLOps** (DVC, MLflow, Airflow, Dagster, FastAPI deployment)
-
-The platform supports **batch and real-time prediction**, is extensible, and ready for both research and production.
-
----
-
-## 🚀 Features
-
-- **Automated, reproducible ML pipeline** (data to deployment)
-- **Advanced feature engineering** (time, lag, statistics, business, TSFresh, LLM-augmented)
-- **AutoML and hyperparameter tuning** (Optuna/GridSearch)
-- **Clustering for model specialization** (KMeans, GMM)
-- **Flexible model selection:** Prophet, XGBoost, LightGBM, LLM-RAG
-- **Multi-step and hierarchical forecasting:** recursive, direct, hybrid, reconciliation (Bottom-up, Top-down, Middle-out, OLS, MinTrace)
-- **Explainability:** SHAP, LLM auto-diagnosis, reporting
-- **MLOps:** MLflow (metrics, models), DVC (data versioning), Airflow/Dagster (orchestration), FastAPI (serving), Streamlit (visualization)
-- **Batch & real-time forecasting**
-- **Designed for extensibility:** easily add new models, features, or data sources
+- **From Data to Layouts**
+  - ETL & preprocessing for retail data (transactions, SKUs, store constraints)
+  - Association mining (frequent itemsets, rules, HUIM)
+  - Affinity graph & layout scoring with real-world constraints
+- **Metaheuristic Optimization**
+  - GA (via [DEAP](https://github.com/DEAP/deap)), Simulated Annealing, Tabu Search with modular operators & callbacks
+  - Objective combines **revenue/margin uplift**, **cross-sell affinity**, and **constraint penalties**
+- **Experimentation & Visualization**
+  - Jupyter notebooks for EDA and benchmarking
+  - Reports (plots & HTML) stored under `reports/figures`
+- **MLOps-Friendly**
+  - `dvc.yaml` to version data and reproduce pipelines
+  - Documentation in `docs/` (build with MkDocs)
 
 ---
 
-## 📁 Project Structure
-
-```text
-retail-forecast-system/
-│
-├── airflow/                  # Airflow DAGs for orchestrating data pipelines and batch workflows
-│   └── dags/
-│       └── system_retail_pipeline.py   # Main Airflow DAG for retail system pipeline automation
-│
-├── api/                      # FastAPI app – RESTful API endpoints for inference, health check, etc.
-│   ├── endpoints.py          # API route handlers
-│   ├── main.py               # API app entrypoint
-│   ├── schema.py             # Pydantic schemas for request/response validation
-│   └── utils.py              # API-specific utilities
-│
-├── app/                      # Lightweight app front-end or dashboard (e.g. Streamlit, Gradio, etc.)
-│   ├── pages/                # Individual app pages (e.g., EDA, visualization)
-│   │   └── EDA.PY            # Exploratory Data Analysis dashboard page
-│   ├── vectordb/             # Vector DB index files (for embedding, semantic search, etc.)
-│   │   └── faiss.index       # FAISS index for fast vector search
-│   ├── README.md             # App-specific README/instructions
-│   └── app.py                # Main app entrypoint
-│
-├── config/                   # YAML configuration files for parameters, models, paths
-│   ├── config.yaml           # Global project config (paths, globals)
-│   └── models.yaml           # Model-specific hyperparameter config
-│
-├── dagster_pipeline/         # Dagster pipeline definitions (alternative or complement to Airflow)
-│   ├── assets.py             # Dagster asset definitions
-│   ├── dagster.yaml          # Dagster config
-│   ├── jobs.py               # Job orchestration (Dagster)
-│   └── schedules.py          # Scheduled jobs (Dagster)
-│
-├── data/                     # Data storage (DO NOT track raw here if using DVC!)
-│   ├── feature-store/        # Feature store for ML training/inference
-│   ├── interim/              # Intermediate, cleaned, or transformed data for experiments
-│   ├── output/               # Output from batch predictions, evaluations, etc.
-│   ├── processed/            # Final/production-ready datasets
-│   ├── raw/                  # Immutable raw source data (never edit manually)
-│   └── sql/                  # SQL scripts for ETL or data exploration
-│
-├── docs/                     # Project documentation (Markdown + site output for mkdocs)
-│   ├── docs/                 # Main docs in Markdown, organized by topic
-│   ├── .gitkeep              # Ensures folder in git if empty
-│   ├── README.md             # Documentation for documentation! (Contributing, etc.)
-│   └── mkdocs.yml            # mkdocs configuration for static site generator
-│
-├── mlruns/                   # MLflow experiment tracking (auto-created, ignore unless using MLflow)
-│
-├── models/                   # Serialized trained models, artifacts, and checkpoints
-│   └── .gitkeep              # Keep empty directory tracked by git
-│
-├── notebooks/                # Jupyter/Colab notebooks (experimentation, prototyping, reports)
-│   ├── .gitkeep              # Empty dir marker
-│   ├── [1]_EDA.ipynb         # Exploratory Data Analysis notebook
-│   ├── [2]_Report.ipynb      # Project summary report notebook
-│   └── [3]_Pipeline-model.ipynb  # Modeling/ML pipeline notebook
-│
-├── rag/                      # Retrieval-Augmented Generation (RAG) code and configs
-│   ├── prompts/              # Prompt templates for LLM-driven RAG workflows
-│   │   └── file_analysis.yaml# RAG prompt for file analysis
-│   ├── chunking.py           # Text chunking utilities for RAG
-│   ├── data_loader.py        # Data loading utilities for RAG
-│   ├── embedding.py          # Embedding functions/classes
-│   ├── llm.py                # LLM interface
-│   ├── pipeline.py           # End-to-end RAG pipeline definition
-│   ├── prompt_engine.py      # Prompt engineering logic
-│   ├── reranker.py           # Result reranking logic
-│   ├── retriever.py          # Retrieval utilities
-│   └── vectordb.py           # Vector database wrapper
-│
-├── reports/                  # Generated reports, figures, and output for business/tech
-│   ├── figures/              # Visual assets, plots, images for reporting
-│   └── .gitkeep              # Keep empty directory in git
-│
-├── src/                      # Core source code: ETL, ML, feature engineering, modeling, etc.
-│   ├── db/                   # Database connection and pipeline modules
-│   ├── features/             # Automated/manual feature engineering scripts
-│   ├── modeling/             # ML/DL model classes and logic (XGBoost, LSTM, Prophet, etc.)
-│   ├── strategies/           # Forecasting strategies: benchmark, multi-step, etc.
-│   ├── utils/                # General-purpose utility functions
-│   ├── config.py             # Centralized configuration loader/manager
-│   ├── cross_validator.py    # Custom cross-validation logic for time series
-│   ├── feature.py            # Feature store logic/integration
-│   ├── forecast_pipeline.py  # End-to-end forecast pipeline logic
-│   ├── load_data.py          # Data loading and parsing logic
-│   ├── plots.py              # Visualization utilities for model results
-│   ├── predict.py            # Inference logic for predictions
-│   ├── preprocess.py         # Data preprocessing/cleaning logic
-│   ├── reconcile.py          # Hierarchical reconciliation logic
-│   └── train.py              # Training orchestration/entrypoint
-│
-├── .dvcignore                # DVC ignore patterns for data version control
-├── .env                      # Environment variables (never commit secrets!)
-├── Dockerfile                # Docker image definition for reproducible builds/deployment
-├── Makefile                  # Automate project workflows (train, test, build, lint, etc.)
-├── README.md                 # Project overview, usage, and instructions (first file people read)
-├── docker-compose.yaml       # Multi-container Docker orchestration (dev/test/prod)
-├── dvc.lock                  # DVC pipeline lock file (auto-generated)
-├── dvc.yaml                  # DVC pipeline config for data versioning
-├── install_ray.bat           # Script to install Ray for distributed processing
-├── main.py                   # Project CLI/main entrypoint (run pipelines, apps, etc.)
-├── pyproject.toml            # Python project metadata/build config (PEP 518+)
-└── requirements.txt          # Python package dependencies (always pin versions for reproducibility)
+## 🏗️ Project Structure
 
 ```
+Retail-Layout-Optimization-with-ML-Metaheuristics/
+├── data/                       # Data (input & artifacts)
+│   ├── raw/                    # Raw input data (transactional logs, SKUs, store info)
+│   │   ├── sku.csv
+│   │   ├── store_adjust.csv
+│   │   └── transactions.csv
+│   ├── interim/                # Intermediate results from preprocessing/mining
+│   │   ├── association_rules.csv
+│   │   ├── frequent_itemsets.csv
+│   │   ├── hui_results.csv
+│   │   ├── layout.csv
+│   │   └── transaction_fpg.csv
+│   ├── processed/              # Final processed data ready for experiments
+│   │   └── ga_logbook_final.csv
+│   └── output/                 # Outputs generated from pipelines (final layouts, metrics)
+│
+├── docs/                       # Documentation (MkDocs site)
+│   ├── index.md                # Docs homepage
+│   ├── install.md              # Installation guide
+│   ├── algorithms.md           # Algorithm details
+│   ├── data.md                 # Data schema & structure
+│   ├── architecture.md         # Project architecture
+│   ├── usage.md                # CLI usage & configs
+│   └── mkdocs.yml              # MkDocs configuration
+│
+├── models/                     # Saved ML/heuristic models (checkpoints, weights)
+│
+├── notebooks/                  # Jupyter notebooks for exploration & prototyping
+│   ├── fpgrowth.ipynb          # Mining frequent patterns
+│   ├── ga.ipynb                # Genetic Algorithm optimization demo
+│   └── optimize_layout_sa.ipynb # Simulated Annealing variant
+│
+├── reports/                    # Reports & results
+│   └── figures/                # Visualizations & plots
+│       ├── affinity_heatmap.png
+│       ├── ga_convergence.png
+│       ├── ga_compare.png
+│       └── layout_preview.html
+│
+├── src/                        # Main source code
+│   ├── db/                     # Database schema & data pipeline
+│   │   ├── data_pipeline.py
+│   │   └── schema.py
+│   ├── features/               # Feature engineering
+│   │   └── feature_engineer.py
+│   ├── models/                 # Core models & optimization algorithms
+│   │   ├── ga/                 # GA operators/implementation
+│   │   ├── affinity.py         # Affinity score computation
+│   │   ├── fpgrowth.py         # Frequent pattern mining
+│   │   ├── ga_optimizer.py     # GA optimization logic
+│   │   ├── greedy.py           # Greedy baseline
+│   │   └── huim.py             # High Utility Itemset Mining
+│   ├── pipelines/              # Orchestration pipelines
+│   │   └── layout_opt_pipeline.py
+│   ├── services/               # Business/domain services
+│   │   ├── affinity_services.py
+│   │   ├── layout_context.py
+│   │   └── layout_tuner.py
+│   ├── utils/                  # Utility functions
+│   │   ├── general_utils.py
+│   │   ├── plot_utils.py
+│   │   └── rule_metrics.py
+│   ├── config.py               # Central configuration file
+│   ├── preprocess.py           # Data preprocessing
+│   └── run_optimize_layout.py  # Main entrypoint for optimization pipeline
+│
+├── app.py                      # Optional: Flask/FastAPI app or demo entrypoint
+├── main.py                     # Main script (could wrap pipeline execution)
+├── Makefile                    # Common commands (e.g., `make run`, `make docs`)
+├── pyproject.toml              # Project metadata & dependencies (Poetry/pip-tools)
+├── requirements.txt            # Python dependencies
+├── dvc.yaml                    # DVC pipeline definition
+├── dvc.lock                    # DVC lock file
+└── README.md                   # Project overview (main documentation entrypoint)
+
+```
+
+---
 
 ---
 
 ## ⚙️ Installation
 
-**1. Prerequisites:**
-
-- Python ≥ 3.9
-- pip, git
-- (Optional): DVC, MLflow, Streamlit, Airflow/Dagster, Docker
-
-**2. Clone the repository:**
-
 ```bash
-git clone https://github.com/your-org/retail-forecast-system.git
-cd retail-forecast-system
-```
+# 1) Clone repository
+git clone https://github.com/vinhnguyen-22/Retail-Layout-Optimization-with-ML-Metaheuristics.git
+cd Retail-Layout-Optimization-with-ML-Metaheuristics
 
-**3. Create and activate virtual environment:**
-
-```bash
+# 2) Create virtual environment (Python 3.10+ recommended)
 python -m venv .venv
-source .venv/bin/activate
-```
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 
-On Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-**4. Install dependencies:**
-
-```bash
-pip install --upgrade pip
+# 3) Install dependencies
 pip install -r requirements.txt
 ```
 
-**5. (Optional) Install extra tools:**
+## Pipeline Usage
 
-```bash
-pip install dvc mlflow streamlit
-```
+```python
 
-**6. Set up `.env` file for credentials, DB, API keys**
+from enum import Enum
+import typer
+from src.config import INTERIM_DATA_DIR
+from src.pipelines.layout_opt_pipeline import LayoutOptimizationPipeline
+from src.preprocess import DataLoader
 
-```bash
-cp .env-example .env
-```
+data = DataLoader(
+    assoc_rules_path=INTERIM_DATA_DIR / assoc_rules_path,
+    freq_itemsets_path=INTERIM_DATA_DIR / freq_itemsets_path,
+    layout_real_path=INTERIM_DATA_DIR / layout_real_path,
+    margin_matrix_path=margin_matrix_path,
+)
 
----
+pipeline = LayoutOptimizationPipeline(
+    data=data,
+    n_trials=n_trials,
+    n_gen_final=n_gen_final,
+    selection=selection,
+    crossover=crossover,
+    mutation=mutation,
+    adaptive=adaptive,
+    seed=seed,
+    pop_size=500,
+)
 
-## 🛠 Usage
-
-### 1️⃣ **DVC Pipeline**
-
-Run the **full pipeline** (from raw data to output, all stages auto-tracked):
-
-```bash
-dvc repro
-```
-
-- Runs every stage in `dvc.yaml` .
-- Outputs, models, metrics, and plots are versioned and reproducible.
-
-**Run a specific stage:**
-
-```bash
-dvc repro feature-engineering
-dvc repro train-xgboost
-```
-
-**Visualize pipeline DAG:**
-
-```bash
-dvc dag
+pipeline.tune()
+pipeline.run_final()
+pipeline.plot_all()
 ```
 
 ---
 
-### 2️⃣ **Dagster Pipeline**
+## 🗃️ Data Requirements
 
-**Run with Dagster (for orchestration, monitoring, and visualization):**
+Expected files under `data/`:
 
-```bash
-dagster dev
-```
+- `data/raw/transactions.csv` – transaction logs (e.g., `transaction_id, sku, qty, price, ts, store_id`)
+- `data/raw/sku.csv` – product master data (e.g., `sku, category, subcategory, size, brand, margin`)
+- `data/raw/store_adjust.csv` – store constraints (e.g., adjacency rules, shelf capacity, forbidden zones)
+- `data/interim/` & `data/processed/` – artifacts generated during mining and preprocessing (frequent itemsets, association rules, HUIM results)
 
-- Access Dagster UI at [http://localhost:3000](http://localhost:3000)
-- Trigger jobs/assets , monitor status, debug runs.
-
-**Example CLI:**
-
-```bash
-dagster job execute --job-name train_xgboost
-dagster asset materialize --select feature_engineering
-```
-
-_Requires code mapping between pipeline stages and Dagster assets/jobs._
+> See schema definitions in `src/db/schema.py` and corresponding data pipeline scripts.
 
 ---
 
-### 3️⃣ **Python CLI / Typer**
+## 🚀 Quickstart
 
-**Manually run each stage** (for debugging, dev, or running small parts):
+### 1) Preprocessing & Association Mining
 
 ```bash
-# Load data
-python main.py load-data load-data --end-date 250630
+# (Option A) Run script
+python main.py association_rules run_fpgrowth --input-file transaction_fpg.csv
 
-# Preprocess: transform, cluster, filter
-python main.py preprocess transform --input-file sales.csv --holiday-file holidays.csv --output-file transformed.csv
-python main.py preprocess cluster-model --input-file transformed.csv --output-file data_clustered.csv --visualize
-python main.py preprocess filter-data --input-file data_clustered.csv --output-file filtered.csv
-
-# Feature engineering
-python main.py feature-engineering feature-engineering --input-file filtered.csv --holiday-file holidays.csv --max-workers 8
-
-# Train models (XGBoost/LightGBM/Prophet)
-python main.py train batch-train --input-file train.csv --holiday-file holidays.csv --model-type xgboost --max-workers 8
-python main.py train batch-train --input-file train.csv --holiday-file holidays.csv --model-type lightgbm --max-workers 8
-python main.py train batch-train --input-file train.csv --model-type prophet --max-workers 8
-
-# Predict
-python main.py predict batch-predict --file-train train.csv --max-workers 8
-
-# Reconcile (hierarchical forecast)
-python main.py reconcile reconcile --input-file batch_forecast_results.csv --output-file reconciled_forecast_hierarchical.csv
+# (Option B) DVC
+dvc fpgrowth
 ```
+
+Outputs will be stored in `data/interim/` & `data/processed/`.
+
+### 2) Layout Optimization
+
+```bash
+python -m src.run_optimize_layout \
+  --n-trials 30 \
+  --n-gen-final 200 \
+  --selection "tournament" \
+  --crossover "cxTwoPoint" \
+  --mutation "mutShuffleIndexes" \
+  --adaptive true \
+  --seed 42 \
+  --pop-size 500
+```
+
+- **Inputs**: mining results (`association_rules.csv`, `frequent_itemsets.csv`, `layout.csv`, etc.)
+- **Outputs**: optimized layouts, GA/SA logs, and visualizations under `reports/figures/` (e.g., `ga_convergence.png`, `ga_compare.png`)
 
 ---
 
-### 4️⃣ **Serving and Visualization**
+## 🧠 Algorithms
 
-- **API serving:**
+- **Affinity & Rule Mining**
+
+  - Frequent Itemsets, Association Rules, High Utility Itemset Mining (HUIM)
+
+- **Objective Function**
+
+  - maximize **expected revenue/margin**
+  - maximize **affinity adjacency** (place related items close together)
+  - minimize **penalties** (constraint violations, shelf capacity, customer flow)
+
+- **Metaheuristics**
+
+  - **Genetic Algorithm (DEAP)** – selection, crossover, mutation, elitism
+  - **Simulated Annealing** – temperature schedule & neighborhood search
+  - **Tabu Search** – tabu list, aspiration, diversification
+
+---
+
+## 🧪 Reproducibility & Tracking
+
+- **DVC**
 
   ```bash
-  uvicorn api.main:app --reload
+  dvc repro   # reproduce pipeline
+  dvc push    # push artifacts to remote
   ```
 
-  Access Swagger UI at [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Reports**
 
-- **Dashboard (Streamlit):**
-
-```bash
-streamlit run app/app.py
-```
-
-![Workflow image](./docs/docs/images/dashboard_streamlit.png)
-
-- **Experiment tracking (MLflow):**
-
-  ```bash
-  mlflow ui
-  ```
-
-  Open [http://localhost:5000](http://localhost:5000) for experiment history
-  ![Workflow image](./docs/docs/images/mlflow_dashboard.png)
-  ![Workflow image](./docs/docs/images/mlflow_compare.png)
-
-- **Notebook EDA/prototyping:**
-
-  ```bash
-  jupyter notebook
-  ```
+  - Generated figures & previews under `reports/figures/` (e.g., `ga_preview.html`)
 
 ---
 
-### 5️⃣ Documentation Site
+## 📊 Visualization
 
-#### **View docs:**
-
-```bash
-pip install mkdocs
-mkdocs serve
-```
-
-- Open [http://localhost:8000](http://localhost:8000)
-
-<details>
-  <summary>All documentation lives in docs folder</summary>
-
-1. [Getting Started](docs/docs/getting-started.md)
-2. [Installation Guide](docs/docs/install.md)
-3. [Project Structure](docs/docs/structure.md)
-4. [Pipeline Architecture](docs/docs/architecture.md)
-5. [Feature Engineering](docs/docs/feature_engineering.md)
-6. [Model Overview](docs/docs/models.md)
-7. [Forecasting Strategies](docs/docs/strategies.md)
-8. [Tooling & MLOps](docs/docs/tools.md)
-9. [Docs Site](http://localhost:8000)
-
-</details>
+- Heatmaps, affinity graphs
+- GA/SA convergence plots
+- Final layout previews
+  All stored under `reports/figures/`.
 
 ---
 
-## 📊 Outputs
+## ⚙️ Configuration
 
-- `batch_forecast_evaluation.csv`
-- `batch_forecast_results.csv`
-- `forecast_evaluation_summary.csv`
-- `reconcile_evaluation.csv`
-- `reconciled_forecast_hierarchical.csv`
+- Modify CLI arguments:
 
-> 📖 See [docs/structure.md](docs/docs/structure.md) for full details
+  - `--n-trials`, `--n-gen-final`, `--pop-size`
+  - `--selection`, `--crossover`, `--mutation`
+  - `--adaptive`, `--seed`
 
----
-
-## 📈 Evaluation Metrics
-
-- **MAE**: Mean Absolute Error
-- **RMSE**: Root Mean Squared Error
-- **MAPE**: Mean Absolute Percentage Error
-- **SMAPE**: Symmetric MAPE
+- Extend GA operators in `src/models/ga/`.
 
 ---
 
-## 🏗️ Architecture & Workflow
+## 🗺️ Roadmap
 
-![Workflow image](./docs/docs/images/Workflow.jpg)
-
-The pipeline automates the full ML lifecycle:
-
-1. **Data Ingestion:** Aggregate data from multiple sources, standardize format (`ds`, `y`, regressors).
-2. **Preprocessing:** Clean missing values, handle outliers, aggregate/disaggregate as needed.
-3. **Feature Engineering:**
-
-   - **Automated:** TSFresh auto extraction (Fourier, energy, stats, autocorr).
-   - **Manual:** Business features (e.g. wholesale, visits).
-   - **Hybrid:** Prophet decomposition as features.
-   - **LLM-RAG:** GenAI suggests, filters, and summarizes features.
-
-4. **Feature Selection:** AutoML (Darts), SHAP, LLM-RAG, and stats select best feature set.
-5. **Clustering:** KMeans/GMM to group time series, adapt model per group.
-6. **Model Training:** Train XGBoost, LightGBM, Prophet based on cluster/hierarchy; normalize features.
-7. **Hyperparameter Tuning:** Optuna/Grid Search per cluster/model.
-8. **Cross-Validation:** Time series cross-validation to estimate out-of-sample accuracy, select best models.
-9. **Model Evaluation:** MAE, MAPE, RMSE, SMAPE. All logged in MLflow.
-10. **Forecast Reconciliation:** HierarchicalForecast (Bottom-up, Top-down, Middle-out, OLS, MinTrace).
-11. **Deployment:** Latest model served via FastAPI for batch/real-time inference.
-12. **Visualization:** Streamlit dashboard, forecast vs. actual, error analysis, LLM-generated insight.
-
-**Multi-step and Hierarchical Forecasting:**
-Supports recursive, direct, and hybrid multi-step strategies. Hierarchical reconciliation guarantees coherence across levels (system, area, store, product, SKU).
+- Multi-objective optimization (Pareto frontier: revenue vs. walking distance)
+- More realistic retail constraints (planogram rules, shelf facings, aisle flows)
+- Spark integration for large-scale mining
+- Additional heuristics/algorithms
 
 ---
 
-## 🚦 Future Roadmap
+## 🤝 Contributing
 
-- [ ] Expand LLM-based business scenario generation and automated reporting
-- [ ] Real-time retraining triggers (Airflow)
-
----
-
-## 👤 Author
-
-- **Nguyễn Thanh Vinh**
-- Email: [vinhnguyenad22@gmail.com](mailto:vinhnguyenad22@gmail.com)
-- GitHub: [https://github.com/vinhnguyen-22](https://github.com/vinhnguyen-22)
+Contributions are welcome! Please open issues or PRs with improvements, new features, or bug fixes.
 
 ---
 
-## 📜 License
+## 📄 License
 
-MIT License. See `LICENSE` for details.
+MIT License (see `LICENSE` file if available).
 
 ---
 
-**_This system combines the flexibility of Python, the power of modern ML, and the best MLOps practices for robust, scalable, and explainable retail forecasting. For extension, troubleshooting, or custom deployment, see docs/ or contact the author._**
+## 📚 References
+
+- [DEAP: Distributed Evolutionary Algorithms in Python](https://github.com/DEAP/deap)
+- [Retail Store Layout Optimization for Maximum Product Visibility (arXiv)](https://arxiv.org/abs/2105.09299)

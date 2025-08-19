@@ -1,4 +1,41 @@
 # =============================
+# Spark / PySpark
+# =============================
+
+# Spark logs & events
+spark-warehouse/
+metastore_db/
+derby.log
+spark-events/
+spark-logs/
+spark-checkpoint/
+checkpoint/
+
+# PySpark local artifacts
+.pySparkLocal/
+.pySpark/
+.pySpark_cache/
+spark_cache/
+
+# Jars and temp files
+*.jar
+*.class
+*.out
+*.crc
+
+# Spark temporary shuffle / stages
+spark-temp/
+spark-staging/
+
+# =============================
+# Artifacts
+# =============================
+artifacts/
+artifacts/**/
+
+
+
+# =============================
 # DAGSTER
 # =============================
 # Ignore Dagster local artifacts

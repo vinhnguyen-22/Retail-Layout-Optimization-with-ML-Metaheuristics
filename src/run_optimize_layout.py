@@ -1,12 +1,6 @@
-import random
 from enum import Enum
-from typing import List, Optional
 
-import numpy as np
-import optuna
-import pandas as pd
 import typer
-from loguru import logger
 
 from src.config import INTERIM_DATA_DIR
 from src.pipelines.layout_opt_pipeline import LayoutOptimizationPipeline
