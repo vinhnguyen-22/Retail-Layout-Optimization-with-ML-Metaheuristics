@@ -71,8 +71,6 @@ Retail-Layout-Optimization-with-ML-Metaheuristics/
 │   ├── db/                     # Database schema & data pipeline
 │   │   ├── data_pipeline.py
 │   │   └── schema.py
-│   ├── features/               # Feature engineering
-│   │   └── feature_engineer.py
 │   ├── models/                 # Core models & optimization algorithms
 │   │   ├── ga/                 # GA operators/implementation
 │   │   ├── affinity.py         # Affinity score computation
